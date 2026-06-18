@@ -1,0 +1,99 @@
+卷 Data 的文件夹 PATH 列表
+卷序列号为 423C-A4C9
+D:.
+│  Code.zip
+│  FHFP-demo1.zip
+│  FPVideas-demo2.zip
+│  Readme.md
+│  requirements.txt
+│  structure.txt
+│  __init__.py
+│  调试.docx
+│  
+├─backend
+│  │  20260607_002.jsonl
+│  │  Abstract2txt.py
+│  │  dashscope_api_annotate.py
+│  │  dashscope_api_annotate2.py
+│  │  database.py
+│  │  download_QwenOmni.py
+│  │  finetune.py
+│  │  finetune_cpu.py
+│  │  main.py
+│  │  msyh.ttc
+│  │  PostgresQL数据库实例具体包含内容.txt
+│  │  preview.mp4
+│  │  test.py
+│  │  test.txt
+│  │  text_extract.py
+│  │  text_extract_nvidia.py
+│  │  video_composer_independent.py
+│  │  标签2_示例.txt
+│  │  
+│  ├─storage
+│  │  ├─avatars
+│  │  │      girl.gif
+│  │  │      girl.mp4
+│  │  │      girl_static.png
+│  │  │      man.gif
+│  │  │      man.mp4
+│  │  │      man_static.png
+│  │  │      
+│  │  └─projects
+│  └─__pycache__
+│          video_composer.cpython-310.pyc
+│          
+├─common
+│  │  datamodel.py
+│  │  schema.py
+│  │  
+│  └─__pycache__
+│          datamodel.cpython-310.pyc
+│          schema.cpython-310.pyc
+│          
+└─frontend
+    │  avatar_man_loop.mp4
+    │  avatar_man_orig.mp4
+    │  core.py
+    │  http_backend.py
+    │  http_backend_async.py
+    │  main_kimi.py
+    │  main_kimi_v2.py
+    │  msyh.ttc
+    │  tts_adj_0.mp3
+    │  tts_adj_1.mp3
+    │  tts_raw_0.mp3
+    │  tts_raw_1.mp3
+    │  video_composer.py
+    │  __init__.py
+    │  
+    ├─avatars
+    │      girl.gif
+    │      girl.mp4
+    │      girl_static.png
+    │      man.gif
+    │      man.mp4
+    │      man_static.png
+    │      
+    ├─components
+    │  │  authdialog.py
+    │  │  filestorage.py
+    │  │  nav_bar.py
+    │  │  video_player.py
+    │  │  
+    │  └─__pycache__
+    │          authdialog.cpython-310.pyc
+    │          filestorage.cpython-310.pyc
+    │          nav_bar.cpython-310.pyc
+    │          video_player.cpython-310.pyc
+    │          
+    ├─static
+    │      logo.png
+    │      
+    └─__pycache__
+            core.cpython-310.pyc
+            http_backend.cpython-310.pyc
+            main_kimi.cpython-310.pyc
+            video_composer.cpython-310.pyc
+            __init__.cpython-310.pyc
+            

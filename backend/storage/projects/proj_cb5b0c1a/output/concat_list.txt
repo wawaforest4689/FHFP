@@ -1,2 +1,0 @@
-file 'D:/wf200/Documents/mypython/FHFP_video_assistant/Code/backend/storage/projects/proj_cb5b0c1a/segments/seg_ac267b5f/video.mp4'
-file 'D:/wf200/Documents/mypython/FHFP_video_assistant/Code/backend/storage/projects/proj_cb5b0c1a/segments/seg_441890a1/video.mp4'

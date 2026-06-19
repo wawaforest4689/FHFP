@@ -1164,6 +1164,8 @@ class Agent1ChatPage(BasePage):
         # 控制tts语音的播放、合成等
         self.tts_state="none"
         self.tts_result=None
+        self.client=ui.context.client
+
 
     def build(self) -> None:
         apply_global_theme()
@@ -1264,33 +1266,35 @@ class Agent1ChatPage(BasePage):
     # 异步回调：只更新数据 + 打开预创建的对话框
     # ==============================================================================
     async def _generate_summary(self) -> None:
-        """生成摘要：异步获取数据，然后打开预创建的对话框"""
-        if not self.current_highlights:
-            ui.notify("请先与助手对话，提取至少一个亮点", type="warning")
-            return
+        with self.client:
+            """生成摘要：异步获取数据，然后打开预创建的对话框"""
+            if not self.current_highlights:
+                ui.notify("请先与助手对话，提取至少一个亮点", type="warning")
+                return
 
-        try:
-            resp = await self.state.backend.agent1_generate_summary(
-                project_id=self.state.current_project.project_id or "mock_proj",
-                highlights=self.current_highlights,
-                custom_notes="请生成适合短视频口播的摘要"
-            )
-            if resp.get("success"):
-                summary = resp.get("summary", "")
-                self.state.current_project.agent1_summary = summary
-                self.state.current_project.agent1_highlights = self.current_highlights
+            resp = {}
+            try:
+                resp = await self.state.backend.agent1_generate_summary(
+                    project_id=self.state.current_project.project_id or "mock_proj",
+                    highlights=self.current_highlights,
+                    custom_notes="请生成适合短视频口播的摘要"
+                )
+                if resp.get("success", False):
+                    summary = resp.get("summary", "")
+                    self.state.current_project.agent1_summary = summary
+                    self.state.current_project.agent1_highlights = self.current_highlights
 
-                # 【关键】更新预创建的对话框内容
-                self.summary_dlg_highlights.set_text(self.current_highlights)
-                self.summary_dlg_input.set_value(summary)
+                    # 【关键】更新预创建的对话框内容
+                    self.summary_dlg_highlights.set_text(self.current_highlights)
+                    self.summary_dlg_input.set_value(summary)
 
-                # 打开对话框（在异步回调中调用 open() 是安全的）
-                await self.summary_dlg.open()
-            else:
-                ui.notify("摘要生成失败", type="negative")
-        except Exception as e:
-            logger.error(f"Generate summary error: {e}")
-            ui.notify("生成失败，请重试", type="negative")
+                    # 打开对话框（在异步回调中调用 open() 是安全的）
+                    await self.summary_dlg.open()
+                else:
+                    ui.notify("摘要生成失败", type="negative")
+            except Exception as e:
+                logger.error(f"Generate summary error: {e}")
+                ui.notify("生成失败，请重试", type="negative")
 
     # ==============================================================================
     # 同步回调：处理对话框确认（在 slot 上下文中执行）
@@ -1396,6 +1400,20 @@ class Agent1ChatPage(BasePage):
 
 
     def _play_audio(self) -> None:
+        if self.tts_state=="none":
+            # 用 JS 创建音频元素
+            ui.run_javascript(f'''
+                  var audio = document.getElementById("tts-audio");
+                  if (!audio) {{
+                      audio = document.createElement('audio');
+                      audio.id = 'tts-audio';
+                      audio.style.display = 'none';
+                      document.body.appendChild(audio);
+                  }}
+                  audio.src = '/tts/{os.path.basename(self.current_audio_path)}';
+                  console.log("TTS: src set to", audio.src);
+              ''')
+            self._set_tts_state("ready")
         ui.run_javascript('document.getElementById("tts-audio").play();')
         self._set_tts_state("playing")
         self._start_ended_check()
@@ -1428,28 +1446,28 @@ class Agent1ChatPage(BasePage):
         # 麦克风状态
         if state == "generating":
             self.mic_btn.props('icon=mic')
-            self.mic_btn.classes(replace='text-yellow-400')  # 生成中变黄
+            self.mic_btn.classes(replace='bg-yellow-400')  # 生成中变黄
         else:
             self.mic_btn.props('icon=mic')
-            self.mic_btn.classes(replace='text-green-400')  # 默认绿色
+            self.mic_btn.classes(replace='bg-green-400')  # 默认绿色
         self.mic_btn.update()
 
         # 扬声器状态
         if state == "none" or "generating":
             self.tts_btn.props('icon=volume_off')
-            self.tts_btn.classes(replace='text-slate-400')
+            self.tts_btn.classes(replace='bg-slate-400')
         elif state == "ready":
             self.tts_btn.props('icon=volume_off')
-            self.tts_btn.classes(replace='text-yellow-400')
+            self.tts_btn.classes(replace='bg-yellow-400')
         elif state == "playing":
             self.tts_btn.props('icon=volume_up')
-            self.tts_btn.classes(replace='text-green-400')
+            self.tts_btn.classes(replace='bg-green-400')
         elif state == "stop":
             self.tts_btn.props('icon=stop')
-            self.tts_btn.classes(replace='text-red-400')
+            self.tts_btn.classes(replace='bg-red-400')
         elif state == "finished":
             self.tts_btn.props('icon=volume_off')
-            self.tts_btn.classes(replace='text-blue-400')
+            self.tts_btn.classes(replace='bg-blue-400')
         self.tts_btn.update()
 
 
@@ -1507,7 +1525,9 @@ class Agent2EditorPage(BasePage):
         self.shots_container: Optional[ui.column] = None
         self.cached_shots_data: List[Dict[str,Any]] = []
         self.notify_msg=None
+        self.client=ui.context.client
         asyncio.create_task(self._load_shots_async())
+
 
     def build(self) -> None:
         apply_global_theme()
@@ -1544,34 +1564,34 @@ class Agent2EditorPage(BasePage):
 
     async def _load_shots_async(self) -> None:
         """异步加载拍摄建议（从后端获取数据）"""
-        try:
-            resp = await self.state.backend.agent2_generate_shots(
-                project_id=self.state.current_project.project_id or "mock_proj",
-                summary=self.state.current_project.agent1_summary,
-                mode_id=self.state.get_mode_id(),
-                style_preference="朴实" if self.state.current_project.mode == CreationMode.PRODUCT_INTRO else "温馨"
-            )
-            if resp.get("success"):
-                self.shots_data = resp.get("shots", [])
-                self.notify_msg = ("positive", "生成成功！" + resp.get("storyline_arc", ""))
-            else:
-                self.notify_msg = ("negative", "生成失败！" + resp.get("storyline_arc", ""))
+        with self.client:
+            try:
+                resp = await self.state.backend.agent2_generate_shots(
+                    project_id=self.state.current_project.project_id or "mock_proj",
+                    summary=self.state.current_project.agent1_summary,
+                    mode_id=self.state.get_mode_id(),
+                    style_preference="朴实" if self.state.current_project.mode == CreationMode.PRODUCT_INTRO else "温馨"
+                )
+                if resp.get("success"):
+                    self.shots_data = resp.get("shots", [])
+                    self.notify_msg = ("positive", "生成成功！" + resp.get("storyline_arc", ""))
+                else:
+                    self.notify_msg = ("negative", "生成失败！" + resp.get("storyline_arc", ""))
 
-        except Exception as e:
-            logger.error(f"Agent2 generate error: {e}")
-            ui.notify("网络错误", type="negative")
-
+            except Exception as e:
+                logger.error(f"Agent2 generate error: {e}")
+                ui.notify("网络错误", type="negative")
 
     def _render_shots(self) -> None:
         """同步渲染已加载的数据"""
-        print(self.shots_data)
+        # print(self.shots_data)
         if not self.shots_container or self.cached_shots_data==self.shots_data:
             return
         if self.notify_msg:
             ui.notify(self.notify_msg[1],type=self.notify_msg[0])
             self.notify_msg=None
 
-        print(self.shots_data)
+        # print(self.shots_data)
         self._do_render()
         self.cached_shots_data=self.shots_data[:]
 
@@ -1743,6 +1763,9 @@ class UploadEditorPage(BasePage):
         self._is_rendering: bool = False
         self._fixed_preview_url: Optional[str] = None
 
+        self.client=ui.context.client
+
+
     def build(self):
         """构建完整页面"""
         apply_global_theme()
@@ -1843,19 +1866,20 @@ class UploadEditorPage(BasePage):
     # 片段管理 - 全部走后端接口
     # ------------------------------------------------------------------
     async def _init_segments(self):
-        pid = self.state.current_project.project_id
-        if not pid:
-            ui.notify("项目未初始化", type="negative")
-            return
+        with self.client:
+            pid = self.state.current_project.project_id
+            if not pid:
+                ui.notify("项目未初始化", type="negative")
+                return
 
-        # 【缓存为空】从后端拉取
-        resp = await self.state.backend.get_project_segments(pid)
-        if resp.get("success"):
-            self.segments = resp.get("segments", [])
-            self.state.current_project.segments = self.segments  # 更新缓存
-            self._render_segments()
-        else:
-            ui.notify(f"加载片段失败: {resp.get('message')}", type="negative")
+            # 【缓存为空】从后端拉取
+            resp = await self.state.backend.get_project_segments(pid)
+            if resp.get("success"):
+                self.segments = resp.get("segments", [])
+                self.state.current_project.segments = self.segments  # 更新缓存
+                self._render_segments()
+            else:
+                ui.notify(f"加载片段失败: {resp.get('message')}", type="negative")
 
 
     def _render_segments(self):
@@ -1917,7 +1941,7 @@ class UploadEditorPage(BasePage):
             with ui.column().classes('w-full gap-2 mt-2'):
                 scene_input = ui.input('画面', value=seg.scene).classes('w-full text-xs').props('dense dark')
                 audio_input = ui.input('音频', value=seg.audio).classes('w-full text-xs').props('dense dark')
-                text_input = ui.input('文案', value=seg.text).classes('w-full text-xs').props('dense dark')
+                text_input = ui.input('文案', value=json.dumps(seg.text,ensure_ascii=False)).classes('w-full text-xs').props('dense dark')
 
                 # 失去焦点时保存
                 scene_input.on('blur', lambda e, s=seg: asyncio.create_task(
